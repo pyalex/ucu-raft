@@ -17,7 +17,7 @@ It has these top-level messages:
 	AppendEntries
 	InstallSnapshot
 */
-package RaftProtocol
+package proto
 
 import proto "github.com/golang/protobuf/proto"
 import fmt "fmt"
