@@ -18,6 +18,8 @@ func (a *APIContext) State(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"state": state.state,
+		"term": state.currentTerm,
+		"commitIndex": state.commitIndex,
 	})
 }
 
