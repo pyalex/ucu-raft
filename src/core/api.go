@@ -10,6 +10,11 @@ type APIContext struct {
 }
 
 func (a *APIContext) New(c *gin.Context) {
+	state := a.manager.Ask(CheckState{})
+	if state.state != "Leader" {
+		c.String(http.StatusConflict, "Not a Leader")
+	}
+
 	a.manager.Ask(CreateEntry{c.Param("command")})
 }
 
@@ -39,35 +44,11 @@ func (a *APIContext) Log(c *gin.Context) {
 	})
 }
 
-func MakeApi(m *StateManager) {
-	r := gin.Default()
+func MakeApi(m *StateManager, e *gin.Engine) {
 	a := APIContext{manager: m}
-	r.GET("/state", a.State)
-	r.POST("/new/:command", a.New)
-	r.GET("/logs", a.Log)
-	r.Run()
-	//r.GET("/gcd/:a/:b", func(c *gin.Context) {
-	//	// Parse parameters
-	//	a, err := strconv.ParseUint(c.Param("a"), 10, 64)
-	//	if err != nil {
-	//		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid parameter A"})
-	//		return
-	//	}
-	//	b, err := strconv.ParseUint(c.Param("b"), 10, 64)
-	//	if err != nil {
-	//		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid parameter B"})
-	//		return
-	//	}
-	//	// Call GCD service
-	//	req := &pb.GCDRequest{A: a, B: b}
-	//	if res, err := gcdClient.Compute(c, req); err == nil {
-	//		c.JSON(http.StatusOK, gin.H{
-	//			"result": fmt.Sprint(res.Result),
-	//		})
-	//	} else {
-	//		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-	//	}
-	//})
+	e.GET("/state", a.State)
+	e.POST("/new/:command", a.New)
+	e.GET("/logs", a.Log)
 }
 
 

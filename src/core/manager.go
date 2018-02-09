@@ -7,7 +7,7 @@ import (
 )
 
 
-type CheckState struct { reqTerm uint64; append bool }
+type CheckState struct { reqTerm uint64; append bool; serverId uint64 }
 type StartElection struct {}
 type PromoteToLeader struct {currentTerm uint64}
 type VoteFor struct { candidateId uint64; lastLogIndex uint64; lastLogTerm uint64}
@@ -15,7 +15,7 @@ type AppendEntries struct {startPos int; entries []LogEntry}
 type CommitEntries struct {commitIndex uint64}
 type UpdateIndexes struct {peerIdx int; lastReplicated LogEntry}
 type LookupNextIndex struct {peerIdx int}
-type CreateEntry struct {command interface{}}
+type CreateEntry struct {Command interface{}}
 
 
 type Request struct {
@@ -68,7 +68,7 @@ func (m *StateManager) manager() {
 			}
 
 			if m.state.state != Follower && req.append && req.reqTerm == m.state.currentTerm {
-				log.Println("Appraising new Leader")
+				log.Printf("Appraising new Leader %v", req.serverId)
 				m.state.state = Follower
 			}
 
@@ -102,8 +102,9 @@ func (m *StateManager) manager() {
 			}
 		case LookupNextIndex:
 			m.state.nextIndex[req.peerIdx]--
+			log.Printf("Next Index updated %+v", m.state.nextIndex)
 		case CreateEntry:
-			m.state.createLog(req.command)
+			m.state.createLog(req.Command)
 			if m.state.state == Leader {
 				*m.appendCh <- struct {}{}
 			}

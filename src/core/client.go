@@ -76,13 +76,29 @@ func LeaderBroadcaster(state RaftState, manager *StateManager) {
 	ticker := time.NewTicker(100 * time.Millisecond)
 
 	request := func(peerIdx int) {
+		if state.state != Leader {
+			return
+		}
+
 		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 		defer cancel()
 
+		var lastEntry LogEntry
+		if len(state.log) > 0 {
+			lastEntry = state.log[len(state.log)-1]
+		} else {
+			lastEntry = LogEntry{}
+		}
+
 		p := getPeer(state.peers[peerIdx])
 		req := prepareAppendRequest(state, peerIdx)
+
 		if len(req.Entries) > 0 {
 			log.Printf("New Request for %d prepared %+v", peerIdx, req)
+		}
+		if state.state != Leader {
+			log.Print("Request cancelled. Not a Leader")
+			return
 		}
 		resp, err := p.AppendEntries(ctx, req)
 		if err != nil {
@@ -91,16 +107,20 @@ func LeaderBroadcaster(state RaftState, manager *StateManager) {
 		}
 
 		if resp.Term != state.currentTerm {
+		    if resp.Term > state.currentTerm {
+			    manager.Ask(CheckState{reqTerm: resp.Term})
+		    }
 			return
 		}
 
-		if resp.Success && len(req.Entries) > 0 {
-			log.Printf("Peer %d succesfully feeded", peerIdx)
-			lastEntry := state.log[len(state.log) - 1]
-			manager.Ask(UpdateIndexes{peerIdx, lastEntry})
-		}
+		if resp.Success {
+			if len(req.Entries) > 0 {
+				log.Printf("Peer %d succesfully feeded", peerIdx)
+			}
 
-		if resp.Success == false {
+			manager.Ask(UpdateIndexes{peerIdx, lastEntry})
+		} else {
+
 			log.Printf("Peer's log %d is not synhronized. Will lookup for right index", peerIdx)
 			manager.Ask(LookupNextIndex{peerIdx})
 			*manager.appendCh <- peerIdx
@@ -154,15 +174,14 @@ func prepareAppendRequest(state RaftState, peerIdx int) *proto.AppendEntries_Req
 	for i, v := range state.log {
 		if v.Index == nextIndex {
 			next = i
-
-			if i > 0 {
-				prevLog = state.log[i-1]
-			} else {
-				prevLog = LogEntry{}
-			}
 			break
 		}
+	}
 
+	if next > 0 {
+		prevLog = state.log[next-1]
+	} else {
+		prevLog = LogEntry{}
 	}
 
 	entries = make([]*proto.Entry, len(state.log)-next)

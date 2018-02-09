@@ -5,6 +5,8 @@ import (
 	context "golang.org/x/net/context"
 	"log"
 	//b64 "encoding/base64"
+	"encoding/gob"
+	"bytes"
 )
 
 type Server struct{
@@ -13,7 +15,7 @@ type Server struct{
 
 func (s *Server) AppendEntries(ctx context.Context, req *proto.AppendEntries_Request) (*proto.AppendEntries_Response, error) {
 	//log.Printf("AppendEntries %v", s.StateManager)
-	state := s.StateManager.Ask(CheckState{reqTerm: req.Term, append: true})
+	state := s.StateManager.Ask(CheckState{reqTerm: req.Term, append: true, serverId: req.ServerId})
 
 	if state.currentTerm > req.Term {
 		// Reply false if term < currentTerm (§5.1)
@@ -32,13 +34,10 @@ func (s *Server) AppendEntries(ctx context.Context, req *proto.AppendEntries_Req
 
 	entries := make([]LogEntry, len(req.Entries))
 	for i, e := range req.Entries {
-		//var buf []byte
-		//dec := gob.NewDecoder(&buf)
-		//dec.Decode(e.Data)
-		//b64.StdEncoding.Decode(buf, e.Data)
-		log.Printf("Incoming data %#v", e.Data)
+		command := tryDecode(e.Data)
+		log.Printf("Incoming data %#v", command)
 		entries[i] = LogEntry{
-			Term: e.Term, Index: e.Index, Command: string(e.Data),
+			Term: e.Term, Index: e.Index, Command: command,
 		}
 	}
 
@@ -79,3 +78,20 @@ func (s *Server) RequestVote(ctx context.Context, req *proto.RequestVote_Request
 }
 
 
+func tryDecode(b []byte) interface{} {
+	var err error
+
+	var op Op
+	err = gob.NewDecoder(bytes.NewReader(b)).Decode(&op)
+	if err == nil {
+		return op
+	}
+
+	var str string
+	err = gob.NewDecoder(bytes.NewReader(b)).Decode(&str)
+	if err == nil {
+		return str
+	}
+
+	return nil
+}

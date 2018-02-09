@@ -11,6 +11,9 @@ services:
     environment:
       - PEERS=raft2:3000,raft3:3000,raft4:3000,raft5:3000
       - MY_ID=1
+    privileged: true
+#    volumes:
+#      - "./state:/state"
 
   raft2:
     image: raft:latest
@@ -22,6 +25,9 @@ services:
     environment:
       - PEERS=raft1:3000,raft3:3000,raft4:3000,raft5:3000
       - MY_ID=2
+    privileged: true
+#    volumes:
+#      - "./state:/state"
 
   raft3:
     image: raft:latest
@@ -33,6 +39,9 @@ services:
     environment:
       - PEERS=raft1:3000,raft2:3000,raft4:3000,raft5:3000
       - MY_ID=3
+    privileged: true
+#    volumes:
+#      - "./state:/state"
 
   raft4:
     image: raft:latest
@@ -44,6 +53,9 @@ services:
     environment:
       - PEERS=raft1:3000,raft2:3000,raft3:3000,raft5:3000
       - MY_ID=4
+    privileged: true
+#    volumes:
+#      - "./state:/state"
 
   raft5:
     image: raft:latest
@@ -55,6 +67,9 @@ services:
     environment:
       - PEERS=raft1:3000,raft2:3000,raft3:3000,raft4:3000
       - MY_ID=5
+    privileged: true
+#    volumes:
+#      - "./state:/state"
 
 networks:
   net:

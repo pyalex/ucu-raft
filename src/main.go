@@ -10,6 +10,9 @@ import (
 	"os"
 	"strings"
 	"strconv"
+	"fmt"
+	"./kv"
+	"github.com/gin-gonic/gin"
 )
 
 func main() {
@@ -22,15 +25,19 @@ func main() {
 	}
 
 	s := grpc.NewServer()
+	applyCh := make(chan core.LogEntry)
+	state := core.MakeRaftState(getPeers(), getMyId(1), getPersistPath(), &applyCh)
 
-	state := core.MakeRaftState(getPeers(), getMyId(1))
 	manager := core.MakeStateManager(state)
 	impl := &core.Server{manager}
 
 	proto.RegisterRaftServiceServer(s, impl)
 	reflection.Register(s)
 
-	go core.MakeApi(manager)
+	e := gin.Default()
+	core.MakeApi(manager, e)
+	kv.MakeKVServer(manager, &applyCh, e)
+	go e.Run()
 
 	if err := s.Serve(listen); err != nil {
 		log.Fatalf("Failed to serve: %v", err)
@@ -53,4 +60,8 @@ func getMyId(def uint64) uint64 {
 		return def
 	}
 	return id
+}
+
+func getPersistPath() string {
+	return fmt.Sprintf("/state/persist-state-%d.raft", getMyId(0))
 }
