@@ -40,7 +40,7 @@ func (m *StateManager) Ask(req interface{}) RaftState {
 func (m *StateManager) electionMonitor() {
 	electionTimeout := func() time.Duration {
 		rand.Seed(time.Now().UnixNano())
-		return (300 + time.Duration(rand.Intn(500))) * time.Millisecond
+		return (500 + time.Duration(rand.Intn(500))) * time.Millisecond
 	}
 
 	for {
@@ -107,6 +107,8 @@ func (m *StateManager) manager() {
 			m.state.createLog(req.Command)
 			if m.state.state == Leader {
 				*m.appendCh <- struct {}{}
+			}else{
+				log.Println("But not a leader anymore")
 			}
 		}
 
@@ -117,7 +119,7 @@ func (m *StateManager) manager() {
 func MakeStateManager(s *RaftState) *StateManager {
 	reqCh := make(chan Request)
 	heartbeatCh := make(chan struct{})
-	appendCh := make(chan interface{})
+	appendCh := make(chan interface{}, 100)
 
 	manager := StateManager{
 		requestCh: &reqCh,

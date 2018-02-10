@@ -8,6 +8,7 @@ import (
 	"google.golang.org/grpc"
 	"bytes"
 	"encoding/gob"
+	"sync"
 )
 
 func BeginElection(state RaftState, manager *StateManager) {
@@ -75,7 +76,15 @@ func LeaderBroadcaster(state RaftState, manager *StateManager) {
 	log.Print("Broadcaster started")
 	ticker := time.NewTicker(100 * time.Millisecond)
 
+	oneRequestAtTime := make([]*sync.Mutex, len(state.peers))
+	for i := range state.peers {
+		oneRequestAtTime[i] = &sync.Mutex{}
+	}
+
 	request := func(peerIdx int) {
+		oneRequestAtTime[peerIdx].Lock()
+		defer oneRequestAtTime[peerIdx].Unlock()
+
 		if state.state != Leader {
 			return
 		}

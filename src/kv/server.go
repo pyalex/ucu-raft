@@ -6,9 +6,10 @@ import (
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"time"
+	"log"
 )
 
-const waitTimeout = 500 * time.Second
+const waitTimeout = 500 * time.Millisecond
 
 type ServerContext struct {
 	manager *core.StateManager
@@ -18,17 +19,23 @@ type ServerContext struct {
 func (s *ServerContext) await(op core.Op, c *gin.Context) {
 	await := make(chan core.OpResult)
 
+	log.Printf("Creating new handler %s", op.RequestId)
+
 	s.kv.Lock()
 	s.kv.requestHandlers[op.RequestId] = await
 	s.kv.Unlock()
 
+	log.Printf("Creating new log %+v", op)
+
 	s.manager.Ask(core.CreateEntry{op})
 	select {
 	case r := <-await:
-		c.String(http.StatusOK, r.Value)
+		c.String(http.StatusOK, "%s\n", r.Value)
 	case <-time.After(waitTimeout):
-		c.String(http.StatusInternalServerError, "Timeout")
+		c.String(http.StatusInternalServerError, "%s\n", "Timeout")
 	}
+
+	log.Printf("Operation finished %s", op.RequestId)
 
 	s.kv.Lock()
 	delete(s.kv.requestHandlers, op.RequestId)
@@ -36,6 +43,8 @@ func (s *ServerContext) await(op core.Op, c *gin.Context) {
 }
 
 func (s *ServerContext) Get(c *gin.Context) {
+	log.Printf("GET %s", c.Param("key"))
+
 	id, _ := uuid.NewV4()
 	op := core.Op{Command: core.Get, Key: c.Param("key"), RequestId: id.String()}
 

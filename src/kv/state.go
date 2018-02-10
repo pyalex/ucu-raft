@@ -56,6 +56,8 @@ func (kv *RaftKV) runApplyWorker() {
 				if handler, isPresent := kv.requestHandlers[op.RequestId]; isPresent {
 					handler <- result
 				}
+
+				log.Println(kv.data)
 			}
 
 		}
