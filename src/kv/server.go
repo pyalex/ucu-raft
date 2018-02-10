@@ -52,6 +52,8 @@ func (s *ServerContext) Get(c *gin.Context) {
 }
 
 func (s *ServerContext) Put(c *gin.Context) {
+	log.Printf("PUT %s=%s", c.Param("key"), c.Param("value"))
+
 	id, _ := uuid.NewV4()
 	op := core.Op{Command: core.Put, Key: c.Param("key"), Value: c.Param("value"), RequestId: id.String()}
 
@@ -59,6 +61,8 @@ func (s *ServerContext) Put(c *gin.Context) {
 }
 
 func (s *ServerContext) Append(c *gin.Context) {
+	log.Printf("POST %s=%s", c.Param("key"), c.Param("value"))
+
 	id, _ := uuid.NewV4()
 	op := core.Op{Command: core.Append, Key: c.Param("key"), Value: c.Param("value"), RequestId: id.String()}
 
